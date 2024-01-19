@@ -1,0 +1,38 @@
+{
+  "link": "https://www.klook.com/en-US/activity/12392-three-hour-city-sightseeing-bike-tour-berlin/",
+  "domain": "www.klook.com",
+  "tag": [
+    "www.klook.com",
+    "en-US",
+    "activity",
+    "12392-three-hour-city-sightseeing-bike-tour-berlin"
+  ],
+  "crawling_time": "2024-01-19 16:13:26",
+  "crawling_time_epoch": 1705655606460,
+  "reviews_name": "Berlin City Highlights Sightseeing Bike Tour",
+  "location_reviews": {
+    "city_name": "Berlin",
+    "country_name": "Germany",
+    "coordinates": {
+      "latitude": 52.540141,
+      "longitude": 13.413456
+    }
+  },
+  "media_reviews": [
+    "https://res.klook.com/image/upload/activities/jd2qrnx6npfa78pxmdip.jpg"
+  ],
+  "category_reviews": "string",
+  "currency_reviews": "IDR",
+  "discount_reviews": null,
+  "price_detail_reviews": {
+    "market_price": 610162,
+    "sell_price": 610162,
+    "from_price": 610162,
+    "to_price": 610162
+  },
+  "total_reviews": 11,
+  "reviews_rating": {
+    "total_rating": 4.9,
+    "detail_total_rating": null
+  }
+}
