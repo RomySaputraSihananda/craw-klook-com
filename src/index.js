@@ -28,12 +28,39 @@ class Klook {
 
     const $ = cheerio.load(await req.text());
 
-    console.log(
-      $('script[data-n-head="ssr"][type="application/ld+json"]')
-        .map((_, e) => JSON.parse($(e).text()))
-        .toArray()
+    const { description, image } = JSON.parse(
+      $('script[data-n-head="ssr"][type="application/ld+json"]').eq(2).text()
+    );
+
+    const catatan = Object.fromEntries(
+      $("#Good_to_know .klk-markdown.klk-markdown--highlight")
+        .map((_, div) => {
+          return [
+            [
+              $(div).find("h4").text(),
+              $(div)
+                .find("ul li")
+                .map((_, li) => {
+                  return $(li).text();
+                })
+                .get(),
+            ],
+          ];
+        })
+        .get()
     );
   }
 }
 
-new Klook();
+// new Klook();
+
+const data = [
+  "<strong>Safari Park</strong>",
+  '<h1 class="ok">Safari Park</h1>',
+  '<img class="ok" src="kasdjljas"/>',
+];
+
+data.forEach((e) => {
+  const $ = cheerio.load(e);
+  console.log($(e).text() ? $(e).text() : $(e).attr("src"));
+});

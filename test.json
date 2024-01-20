@@ -1,38 +1,39 @@
 {
-  "link": "https://www.klook.com/en-US/activity/12392-three-hour-city-sightseeing-bike-tour-berlin/",
+  "link": "https://www.klook.com/en-US/activity/5798-green-planet-ticket-dubai/",
   "domain": "www.klook.com",
   "tag": [
     "www.klook.com",
     "en-US",
     "activity",
-    "12392-three-hour-city-sightseeing-bike-tour-berlin"
+    "5798-green-planet-ticket-dubai"
   ],
-  "crawling_time": "2024-01-19 16:13:26",
-  "crawling_time_epoch": 1705655606460,
-  "reviews_name": "Berlin City Highlights Sightseeing Bike Tour",
+  "crawling_time": "2024-01-19 18:56:14",
+  "crawling_time_epoch": 1705665374390,
+  "reviews_name": "The Green Planet Ticket in Dubai",
   "location_reviews": {
-    "city_name": "Berlin",
-    "country_name": "Germany",
+    "city_name": "Dubai",
+    "country_name": "UAE",
     "coordinates": {
-      "latitude": 52.540141,
-      "longitude": 13.413456
+      "latitude": 25.20863,
+      "longitude": 55.262521
     }
   },
   "media_reviews": [
-    "https://res.klook.com/image/upload/activities/jd2qrnx6npfa78pxmdip.jpg"
+    "https://res.klook.com/video/upload/c_scale,h_540,vc_h264/c_scale,g_north_west,h_20,l_whitelogo_hz5dq1,o_30,x_70,y_480/c_scale,f_mp4,fl_splice,h_540,l_video:ending_trgtvv/v1507609372/activities/cp6bupafhd8qjfqhdtnh.mp4",
+    "https://res.klook.com/image/upload/activities/esthps0sqqnjecexqlze.jpg"
   ],
   "category_reviews": "string",
   "currency_reviews": "IDR",
-  "discount_reviews": null,
+  "discount_reviews": 12,
   "price_detail_reviews": {
-    "market_price": 610162,
-    "sell_price": 610162,
-    "from_price": 610162,
-    "to_price": 610162
+    "market_price": 743788,
+    "sell_price": 654659,
+    "from_price": 654659,
+    "to_price": 1166686
   },
-  "total_reviews": 11,
+  "total_reviews": 534,
   "reviews_rating": {
-    "total_rating": 4.9,
+    "total_rating": 4.5,
     "detail_total_rating": null
   }
 }
