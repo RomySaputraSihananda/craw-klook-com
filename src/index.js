@@ -1,12 +1,21 @@
 import * as cheerio from "cheerio";
 import fs from "fs-extra";
-import fetch from "node-fetch";
+// import fetch from "node-fetch";
 import strftime from "strftime";
+
+const headers = {
+  currency: "IDR",
+};
+
 class Klook {
   #BASE_URL = "https://www.klook.com";
 
   constructor() {
     this.#start();
+  }
+
+  async #writeFile(outputFile, data) {
+    await fs.outputFile(outputFile, JSON.stringify(data, null, 2));
   }
 
   async #start() {
@@ -18,26 +27,20 @@ class Klook {
   }
 
   async #getCountries() {
-    const req = await fetch(
-      "https://www.klook.com/v1/usrcsrv/destination/guide"
+    const response = await fetch(
+      `${this.#BASE_URL}/v1/usrcsrv/destination/guide`
     );
-    const { result } = await req.json();
+    const { result } = await response.json();
 
     return result.app_destination_guide_list[0].sub_menu_list;
   }
 
   async #getInfo(url) {
-    const req = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Firefox/118.0",
-        "Accept-Language": "en-US,en;q=0.5",
-        Cookie:
-          'ftr_blst_1h=1705774241359;klk_ps=1;klk_i_sn=4830454301..1705774822636;__lt__sid.c83939be=b750d8cf-7ee36b31;_ga_FW3CMDM313=GS1.1.1705774238.1.1.1705774818.0.0.0;_yjsu_yjad=1705774238.50f68494-1d07-4c6e-bd11-242bcbd35888;wcs_bt=s_2cb388a4aa34:1705774818;_tt_enable_cookie=1;_ga=GA1.1.719586536.1705774239;KSID=MQ.6da66ba4292b485a6a39258304e10809;__lt__cid=bdb2db77-41cc-4a8d-a680-2f2059194dd9;_uetvid=370ad390b7bf11ee925f113f2be3e15e;__lt__sid=b750d8cf-7ee36b31;_gid=GA1.2.1825558029.1705774239;__lt__cid.c83939be=bdb2db77-41cc-4a8d-a680-2f2059194dd9;_fwb=193Czie2qHUxgHmYQAABS4k.1705774238526;_ga_TH9DNLM4ST=GS1.1.1705774240.1.1.1705774822.54.0.0;_ga_V8S4KC8ZXR=GS1.1.1705774239.1.1.1705774819.57.0.0;_gcl_au=1.1.159200343.1705774238;_ttp=rp7bxv6M8YOPdhG30j9Strs5vB6;_uetsid=3709f820b7bf11ee9ad79f128b0ccfc3;clientside-cookie=5e948f8b0c62a43de85882b29adad4f0fe2d4972cc249779324a30b76cee6fed70b8ba9d636afba91d70bc0da9a980bc73050eee8e1ecf4296d586c3e3cbea00e8e18fe56d2d91ef05178d9fa674fa40fae1a94bddc2f8ce7103de877a272044106e316678540dfe893565ca076209f557b3d6bcc5747a5614c64d41b739b22eadff10cccde4f59021c1c6ed4147b99b7345b3db37613806e4f30f;dable_uid=43548004.1705774238944;datadome=NzwTyDCn47Ia58WgpO4jOsOuDkPRxf1hs8fRof9HHx0CNUG7s9xntrUDoEMSUWR7UrS0m9wDrGTNo5nB1PjsNvagWv5jeMciwBL4R8Ei5u18Cw5m7PGGYSkGsD4RRjO3;forterToken=704460443c3142c88fccbdef8027b651_1705774820433__UDF43-m4_13ck_;g_state={"i_p":1705781456485,"i_l":1};JSESSIONID=7081DA06282CA956DFDD095047902546;kepler_id=6b3b7eba-2481-4e63-90f4-d8263bb6c71f;klk_currency=IDR;klk_ga_sn=3368912561..1705774817877;klk_rdc=ID;KOUNT_SESSION_ID=7081DA06282CA956DFDD095047902546',
-      },
+    const response = await fetch(url, {
+      headers,
     });
 
-    const $ = cheerio.load(await req.text());
+    const $ = cheerio.load(await response.text());
 
     const { description, image } = JSON.parse(
       $('script[data-n-head="ssr"][type="application/ld+json"]').eq(2).text()
@@ -79,9 +82,7 @@ class Klook {
           language: "id",
         }),
       {
-        headers: {
-          currency: "IDR",
-        },
+        headers,
       }
     );
     const { result } = await response.json();
@@ -101,9 +102,7 @@ class Klook {
                 language: "id",
               }),
             {
-              headers: {
-                currency: "IDR",
-              },
+              headers,
             }
           );
           const { result } = await response.json();
@@ -116,30 +115,90 @@ class Klook {
       const pkg = package_list[0];
       return {
         activity_name,
-        package_list: {
-          currency_reviews: "IDR",
-          max_price: parseInt(
-            pkg.max_price.replace("Rp ", "").replaceAll(",", "")
-          ),
-          sku_remind: pkg.sku_remind,
-          sku_remind_note: pkg.sku_remind_note,
-          description: pkg.render_object
-            .map(({ content }) => {
-              const $ = cheerio.load(content);
-              try {
-                const url = $(content).attr("src");
+        currency_reviews: "IDR",
+        max_price: parseInt(
+          pkg.max_price.replace("Rp ", "").replaceAll(",", "")
+        ),
+        sku_remind: pkg.sku_remind,
+        sku_remind_note: pkg.sku_remind_note,
+        description: pkg.render_object
+          .map(({ content }) => {
+            const $ = cheerio.load(content);
+            try {
+              const url = $(content).attr("src");
 
-                if (!url) throw Error;
+              if (!url) throw Error;
 
-                return url;
-              } catch (e) {
-                return content.replace(/<[^>]*>/g, "");
-              }
-            })
-            .join("/n"),
-        },
+              return url;
+            } catch (e) {
+              return content.replace(/<[^>]*>/g, "");
+            }
+          })
+          .join("/n"),
       };
     });
+  }
+
+  async #getReviews(activitieId) {
+    const reviews = [];
+    let i = 1;
+    while (true) {
+      const response = await fetch(
+        `${
+          this.#BASE_URL
+        }/v1/experiencesrv/activity/component_service/activity_reviews_list?` +
+          new URLSearchParams({
+            activity_id: activitieId,
+            page: i,
+            limit: 10,
+          }),
+        { headers }
+      );
+
+      const { result } = await response.json();
+
+      if (result.item) {
+        console.log("kosong");
+        break;
+      }
+
+      reviews.push(
+        ...result.item.map((item) => {
+          return {
+            id: item.id,
+            username_reviews: item.author,
+            package_name_reviews: item.package_name,
+            ticket_id_reviews: item.ticket_id,
+            avatar_reviews: `https://cdn.klook.com/upload/img200X200/${item.avatar}`,
+            image_reviews: item.review_image.map((image) => image.img_url),
+            created_time: item.date,
+            created_time_epoch: new Date(item.date).getTime(),
+            email_reviews: null,
+            company_name: null,
+            location_reviews: null,
+            title_detail_reviews: null,
+            reviews_rating: item.rating / 20,
+            detail_reviews_rating: null,
+            total_likes_reviews: item.like_count,
+            total_dislikes_reviews: null,
+            total_reply_reviews: item.has_reply ? item.has_reply : 0,
+            content_reviews: item.content,
+            content_language: item.language,
+            content_translate_reviews: item.translate_content,
+            content_translate_language: item.translate_language,
+            reply_content_reviews: item.reply,
+            date_of_experience: strftime(
+              "%Y-%m-%d %H:%M:%S",
+              new Date(item.start_time)
+            ),
+            date_of_experience_epoch: new Date(item.start_time).getTime(),
+          };
+        })
+      );
+      i++;
+    }
+
+    return reviews;
   }
 
   async #process(url) {
@@ -149,107 +208,121 @@ class Klook {
       let i = 1;
       while (true) {
         try {
-          const req = await fetch(
-            `https://www.klook.com/v2/usrcsrv/search/country/${klook_id}/activities?start=${i}&size=25`,
+          const response = await fetch(
+            `${
+              this.#BASE_URL
+            }/v2/usrcsrv/search/country/${klook_id}/activities?start=${i}&size=25`,
             {
-              headers: {
-                currency: "IDR",
-              },
+              headers,
             }
           );
 
-          const { result } = await req.json();
+          const { result } = await response.json();
 
           if (!result.activities) break;
 
-          result.activities.forEach(async (activitie) => {
-            // for (const activitie of result.activities) {
+          // result.activities.forEach(async (activitie) => {
+          for (const activitie of result.activities) {
             try {
-              if (activitie.id == 71541) {
-                const { description, catatan, image } = await this.#getInfo(
-                  activitie.deeplink
-                );
-                console.log({ description, catatan, image });
-                fs.writeJSON("hehe.json", {
-                  link: activitie.deeplink,
-                  domain: "www.klook.com",
-                  tag: activitie.deeplink
-                    .replace(/\/$/, "")
-                    .split("/")
-                    .slice(2),
-                  crawling_time: strftime("%Y-%m-%d %H:%M:%S", new Date()),
-                  crawling_time_epoch: Date.now(),
-                  // path_data_raw: `data/data_raw/data_review/${"www.klook.com"}/${
-                  //   activitie.title
-                  // }/json/${review.reviewId}.json`,
-                  // path_data_clean: `data/data_clean/data_review/${"www.klook.com"}/${
-                  //   activitie.title
-                  // }/json/${review.reviewId}.json`,
-                  reviews_name: activitie.title,
-                  description_reviews: description,
-                  location_reviews: {
-                    ...Object.fromEntries(
-                      Object.keys(activitie)
-                        .filter((key) => key.endsWith("name"))
-                        .map((key) => [key, activitie[key]])
-                    ),
-                    coordinates: Object.fromEntries(
-                      activitie.latlng
-                        .split(",")
-                        .map((e, i) => [
-                          i == 0 ? "latitude" : "longitude",
-                          parseFloat(e),
-                        ])
-                    ),
-                  },
-                  media_reviews: Object.keys(activitie)
-                    .filter(
-                      (key) =>
-                        key.startsWith("video") | key.startsWith("image") &&
-                        activitie[key].length
-                    )
-                    .map((key) => activitie[key])
-                    .concat(image),
-                  category_reviews: "travel",
-                  currency_reviews: activitie.currency,
-                  discount_reviews:
-                    activitie.card_tags.deals_discount &&
-                    activitie.card_tags.deals_discount.includes("%")
-                      ? parseFloat(
-                          activitie.card_tags.deals_discount.match(
-                            /[\d+.,]+/
-                          )[0]
-                        )
-                      : null,
-                  price_detail_reviews: Object.fromEntries(
+              const { description, catatan, image } = {
+                description: null,
+                catatan: null,
+                image: null,
+              };
+              // await this.#getInfo(
+              //   activitie.deeplink
+              // );
+
+              const header = {
+                link: activitie.deeplink,
+                domain: "www.klook.com",
+                tag: activitie.deeplink.replace(/\/$/, "").split("/").slice(2),
+                crawling_time: strftime("%Y-%m-%d %H:%M:%S", new Date()),
+                crawling_time_epoch: Date.now(),
+                reviews_name: activitie.title,
+                description_reviews: description,
+                notes_reviews: catatan,
+                location_reviews: {
+                  ...Object.fromEntries(
                     Object.keys(activitie)
-                      .filter(
-                        (key) => key.endsWith("_price") && key !== "spec_price"
-                      )
-                      .map((key) => {
-                        return [key, parseInt(activitie[key] | 0)];
-                      })
+                      .filter((key) => key.endsWith("name"))
+                      .map((key) => [key, activitie[key]])
                   ),
-                  total_reviews: activitie.review_total,
-                  reviews_rating: {
-                    total_rating: activitie.score,
-                    detail_total_rating: null,
-                  },
-                  product_reviews: await this.#getProducts(activitie.id),
+                  coordinates: Object.fromEntries(
+                    activitie.latlng
+                      .split(",")
+                      .map((e, i) => [
+                        i == 0 ? "latitude" : "longitude",
+                        parseFloat(e),
+                      ])
+                  ),
+                },
+                media_reviews: Object.keys(activitie)
+                  .filter(
+                    (key) =>
+                      key.startsWith("video") | key.startsWith("image") &&
+                      activitie[key].length
+                  )
+                  .map((key) => activitie[key])
+                  .concat(image),
+                category_reviews: "travel",
+                currency_reviews: activitie.currency,
+                discount_reviews:
+                  activitie.card_tags.deals_discount &&
+                  activitie.card_tags.deals_discount.includes("%")
+                    ? parseFloat(
+                        activitie.card_tags.deals_discount.match(/[\d+.,]+/)[0]
+                      )
+                    : null,
+                price_detail_reviews: Object.fromEntries(
+                  Object.keys(activitie)
+                    .filter(
+                      (key) => key.endsWith("_price") && key !== "spec_price"
+                    )
+                    .map((key) => {
+                      return [key, parseInt(activitie[key] | 0)];
+                    })
+                ),
+                total_reviews: activitie.review_total,
+                reviews_rating: {
+                  total_rating: activitie.score,
+                  detail_total_rating: null,
+                },
+                // product_reviews: await this.#getProducts(activitie.id),
+              };
+
+              const reviews = await this.#getReviews(activitie.id);
+              if (!reviews) continue;
+
+              try {
+                reviews.forEach(async (review) => {
+                  const output = `data/${activitie.title}/${review.id}.json`;
+                  delete review.id;
+                  console.log(output);
+                  await this.#writeFile(output, {
+                    ...header,
+                    path_data_raw: `data/data_raw/data_review/${"www.klook.com"}/${
+                      activitie.title
+                    }/json/${review.id}.json`,
+                    path_data_clean: `data/data_clean/data_review/${"www.klook.com"}/${
+                      activitie.title
+                    }/json/${review.id}.json`,
+                    detail_reviews: review,
+                  });
                 });
+              } catch (e) {
+                console.error(e);
               }
+              // }
             } catch (e) {
-              console.log(e);
-              throw e;
-              // console.log(activitie.card_tags.deals_discount);
+              console.error(e);
             }
-          });
-          // }
+            // });
+          }
           // break;
           i++;
         } catch (e) {
-          // console.log(req.status, await req.text());
-          throw e;
+          console.error(e);
         }
       }
       // }
@@ -258,17 +331,3 @@ class Klook {
 }
 
 new Klook();
-
-// const req = await fetch(
-//   "https://www.klook.com/id/activity/71541-klook-fun-pass-bangkok-pattaya-attraction/",
-//   {
-//     headers: {
-//       "User-Agent":
-//         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36",
-//       Cookie:
-//       "Accept-Language": "en-US,en;q=0.5",
-//     },
-//   }
-// );
-
-// fs.writeFileSync("jhjsadb.html", await req.text());
