@@ -2,10 +2,7 @@ import * as cheerio from "cheerio";
 import fs from "fs-extra";
 // import fetch from "node-fetch";
 import strftime from "strftime";
-
-const headers = {
-  currency: "IDR",
-};
+import cookie from "./utils/cookie.js";
 
 class Klook {
   #BASE_URL = "https://www.klook.com";
@@ -14,8 +11,25 @@ class Klook {
     this.#start();
   }
 
+  #headers() {
+    return {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0",
+      currency: "IDR",
+      Cookie: cookie[Math.round(Math.random() * cookie.length)],
+    };
+  }
+
   async #writeFile(outputFile, data) {
     await fs.outputFile(outputFile, JSON.stringify(data, null, 2));
+  }
+
+  async #sleep(s) {
+    return new Promise((r) => {
+      setTimeout(() => {
+        r();
+      }, s * 1000);
+    });
   }
 
   async #start() {
@@ -37,38 +51,43 @@ class Klook {
 
   async #getInfo(url) {
     const response = await fetch(url, {
-      headers,
+      headers: this.#headers(),
     });
 
     const $ = cheerio.load(await response.text());
 
-    const { description, image } = JSON.parse(
-      $('script[data-n-head="ssr"][type="application/ld+json"]').eq(2).text()
-    );
+    try {
+      const { description, image } = JSON.parse(
+        $('script[data-n-head="ssr"][type="application/ld+json"]').eq(2).text()
+      );
 
-    const { contentUrl: video } = JSON.parse(
-      $('script[data-n-head="ssr"][type="application/ld+json"]').first().text()
-    );
+      const { contentUrl: video } = JSON.parse(
+        $('script[data-n-head="ssr"][type="application/ld+json"]')
+          .first()
+          .text()
+      );
 
-    const catatan = Object.fromEntries(
-      $("#Good_to_know .klk-markdown.klk-markdown--highlight")
-        .map((_, div) => {
-          return [
-            [
-              $(div).find("h4").text(),
-              $(div)
-                .find("ul li")
-                .map((_, li) => {
-                  return $(li).text();
-                })
-                .get(),
-            ],
-          ];
-        })
-        .get()
-    );
-
-    return { description, catatan, image: [video, ...image] };
+      const catatan = Object.fromEntries(
+        $("#Good_to_know .klk-markdown.klk-markdown--highlight")
+          .map((_, div) => {
+            return [
+              [
+                $(div).find("h4").text(),
+                $(div)
+                  .find("ul li")
+                  .map((_, li) => {
+                    return $(li).text();
+                  })
+                  .get(),
+              ],
+            ];
+          })
+          .get()
+      );
+      return { description, catatan, image: [video, ...image] };
+    } catch (e) {
+      return { description: null, catatan: null, image: null };
+    }
   }
 
   async #getProducts(klook_id) {
@@ -82,35 +101,36 @@ class Klook {
           language: "id",
         }),
       {
-        headers,
+        headers: this.#headers(),
       }
     );
     const { result } = await response.json();
 
     if (!result.attraction_included_list.length) return [];
 
-    const products = await Promise.all(
-      result.attraction_included_list[0].data_list.map(
-        async ({ activity_id }) => {
-          const response = await fetch(
-            `${
-              this.#BASE_URL
-            }/v1/attractionbffsrv/travelpass/pass_service/get_standard_activity_detail_by_pass_id?` +
-              new URLSearchParams({
-                pass_activity_id: klook_id,
-                standard_activity_id: activity_id,
-                language: "id",
-              }),
-            {
-              headers,
-            }
-          );
-          const { result } = await response.json();
+    const products = [];
 
-          return result;
+    for (const { activity_id } of result.attraction_included_list[0]
+      .data_list) {
+      const response = await fetch(
+        `${
+          this.#BASE_URL
+        }/v1/attractionbffsrv/travelpass/pass_service/get_standard_activity_detail_by_pass_id?` +
+          new URLSearchParams({
+            pass_activity_id: klook_id,
+            standard_activity_id: activity_id,
+            language: "id",
+          }),
+        {
+          headers: this.#headers(),
         }
-      )
-    );
+      );
+      const { result } = await response.json();
+
+      products.push(...result);
+      await this.#sleep(3.5);
+    }
+
     return products.map(({ activity_name, package_list }) => {
       const pkg = package_list[0];
       return {
@@ -152,15 +172,12 @@ class Klook {
             page: i,
             limit: 10,
           }),
-        { headers }
+        { headers: this.#headers() }
       );
 
       const { result } = await response.json();
 
-      if (result.item) {
-        console.log("kosong");
-        break;
-      }
+      if (!result.item) break;
 
       reviews.push(
         ...result.item.map((item) => {
@@ -170,7 +187,9 @@ class Klook {
             package_name_reviews: item.package_name,
             ticket_id_reviews: item.ticket_id,
             avatar_reviews: `https://cdn.klook.com/upload/img200X200/${item.avatar}`,
-            image_reviews: item.review_image.map((image) => image.img_url),
+            image_reviews: item.review_image
+              ? item.review_image.map((image) => image.img_url)
+              : [],
             created_time: item.date,
             created_time_epoch: new Date(item.date).getTime(),
             email_reviews: null,
@@ -195,6 +214,7 @@ class Klook {
           };
         })
       );
+      await this.#sleep(3.5);
       i++;
     }
 
@@ -203,8 +223,7 @@ class Klook {
 
   async #process(url) {
     const countries = await this.#getCountries();
-    countries.forEach(async ({ klook_id }) => {
-      // for (const { klook_id } of countries) {
+    for (const { klook_id } of countries) {
       let i = 1;
       while (true) {
         try {
@@ -213,7 +232,7 @@ class Klook {
               this.#BASE_URL
             }/v2/usrcsrv/search/country/${klook_id}/activities?start=${i}&size=25`,
             {
-              headers,
+              headers: this.#headers(),
             }
           );
 
@@ -221,17 +240,11 @@ class Klook {
 
           if (!result.activities) break;
 
-          // result.activities.forEach(async (activitie) => {
           for (const activitie of result.activities) {
             try {
-              const { description, catatan, image } = {
-                description: null,
-                catatan: null,
-                image: null,
-              };
-              // await this.#getInfo(
-              //   activitie.deeplink
-              // );
+              const { description, catatan, image } = await this.#getInfo(
+                activitie.deeplink
+              );
 
               const header = {
                 link: activitie.deeplink,
@@ -264,7 +277,7 @@ class Klook {
                       activitie[key].length
                   )
                   .map((key) => activitie[key])
-                  .concat(image),
+                  .concat(image ? image : []),
                 category_reviews: "travel",
                 currency_reviews: activitie.currency,
                 discount_reviews:
@@ -288,45 +301,86 @@ class Klook {
                   total_rating: activitie.score,
                   detail_total_rating: null,
                 },
-                // product_reviews: await this.#getProducts(activitie.id),
+                product_reviews: await this.#getProducts(activitie.id),
               };
 
+              await this.#sleep(2);
+
+              let output = `data/${activitie.title}/detail.json`;
               const reviews = await this.#getReviews(activitie.id);
-              if (!reviews) continue;
+
+              const log = {
+                Crawlling_time: strftime("%Y-%m-%d %H:%M:%S", new Date()),
+                id_project: "Data Intelligence",
+                project: "Data Review",
+                source_name: this.#BASE_URL.split("/")[2],
+                id: activitie.id.toString(),
+                total_data: reviews.length,
+                total_success: 0,
+                total_failed: 0,
+                status: "Process",
+                assign: "romy",
+              };
+
+              if (!reviews.length) {
+                await fs.appendFile("log.txt", JSON.stringify(log) + "\n");
+
+                await this.#writeFile(output, header);
+                continue;
+              }
 
               try {
-                reviews.forEach(async (review) => {
-                  const output = `data/${activitie.title}/${review.id}.json`;
-                  delete review.id;
-                  console.log(output);
-                  await this.#writeFile(output, {
-                    ...header,
-                    path_data_raw: `data/data_raw/data_review/${"www.klook.com"}/${
-                      activitie.title
-                    }/json/${review.id}.json`,
-                    path_data_clean: `data/data_clean/data_review/${"www.klook.com"}/${
-                      activitie.title
-                    }/json/${review.id}.json`,
-                    detail_reviews: review,
-                  });
-                });
+                await Promise.all(
+                  reviews.map(async (review) => {
+                    output = `data/${activitie.title}/${review.id}.json`;
+                    delete review.id;
+                    console.log(output);
+                    await this.#writeFile(output, {
+                      ...header,
+                      path_data_raw: `data/data_raw/data_review/${"www.klook.com"}/${
+                        activitie.title
+                      }/json/${review.id}.json`,
+                      path_data_clean: `data/data_clean/data_review/${"www.klook.com"}/${
+                        activitie.title
+                      }/json/${review.id}.json`,
+                      detail_reviews: review,
+                    });
+                    log.total_success += 1;
+                  })
+                );
               } catch (e) {
-                console.error(e);
+                log.total_failed += 1;
+                await fs.appendFile(
+                  "error.txt",
+                  JSON.stringify({
+                    crawling_time: strftime("%Y-%m-%d %H:%M:%S", new Date()),
+                    id_project: "Data Intelegent",
+                    project: "Data Review",
+                    source_name: this.#BASE_URL.split("/")[2],
+                    id: productId,
+                    process_name: "Crawling",
+                    status: "error",
+                    type_error: "ConnectionError",
+                    detail_error: e,
+                    assign: "romy",
+                  }) + "\n"
+                );
               }
-              // }
+              log.status = "Done";
+
+              await fs.appendFile("log.txt", JSON.stringify(log) + "\n");
             } catch (e) {
-              console.error(e);
+              console.error(e.toString());
             }
-            // });
+            await this.#sleep(3.5);
           }
-          // break;
+          break;
           i++;
         } catch (e) {
-          console.error(e);
+          console.error(e.toString());
         }
       }
-      // }
-    });
+    }
   }
 }
 
